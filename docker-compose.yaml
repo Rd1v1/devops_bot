@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  bot:
+    container_name: bot
+    build: bot/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./bot:/bot
+    networks:
+      - my_network
+
+  db:
+    container_name: db
+    build: db/Dockerfile
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_DB=tg_bot
+    ports:
+      - "5432:5432"
+    networks:
+      - my_network
+
+  db_repl:
+    container_name: db_repl
+    build: db_repl/Dockerfile
+    ports:
+      - "5433:5432"
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+    networks:
+      - my_network
+
+volumes:
+  db_data:
+
+networks:
+  my_network:
+    driver: bridge
