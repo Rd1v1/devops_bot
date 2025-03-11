@@ -250,26 +250,6 @@ def verify_password(update: Update, context):
     logging.info("verify_password exit 0")
     return ConversationHandler.END
 
-# def ssh_connect(update: Update, context):
-#     hostname = os.getenv("RM_HOST")
-#     port = os.getenv("RM_PORT")
-#     username = os.getenv("RM_USER")
-#     password = os.getenv("RM_PASSWORD")
-
-#     client = paramiko.SSHClient()
-#     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-#     client.connect(hostname=hostname, username=username, password=password, port=port)
-#     stdin, stdout, stderr = client.exec_command('free -h')
-#     data = stdout.read() + stderr.read()
-#     client.close()
-#     data = str(data).replace('\\n', '\n').replace('\\t', '\t')[2:-1]
-#     if data:
-#         update.message.reply_text(data)
-#     else:
-#         update.message.reply_text("Произошла ошибка")
-
-    return ConversationHandler.END
-
 def echo(update: Update, context):
     update.message.reply_text(update.message.text)
 
