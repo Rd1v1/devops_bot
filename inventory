@@ -1,3 +1,4 @@
-host01 ansible_host=192.168.58.150 ansible_user=ansible ansible_password=ansible
-host02 ansible_host=192.168.58.165 ansible_user=ansible ansible_password=ansible
-host03 ansible_host=192.168.58.166 ansible_user=ansible ansible_password=ansible
+[hosts]
+host01 ansible_host=192.168.58.150 ansible_user=ansible ansible_password=ansible bot=192.168.58.150
+host02 ansible_host=192.168.58.167 ansible_user=ansible ansible_password=ansible db=192.168.58.167
+host03 ansible_host=192.168.58.166 ansible_user=ansible ansible_password=ansible db_repl=192.168.58.166

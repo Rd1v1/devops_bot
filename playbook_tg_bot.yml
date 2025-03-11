@@ -10,8 +10,31 @@
           - postgresql-contrib
           - python3
           - pip
+          - ufw
         state: latest
       become: true
+
+    - name: Copy postgresql.conf
+      template:
+        src: ./postgresql.conf
+        dest: "/etc/postgresql/15/main/postgresql.conf"
+
+    - name: Copy pg_hba.conf
+      template:
+        src: ./pg_hba.conf
+        dest: "/etc/postgresql/15/main/pg_hba.conf"
+
+    - name: Allow PostgreSQL through UFW
+      ufw:
+        rule: allow
+        port: 5432
+        proto: tcp
+
+    - name: Allow SSH through UFW
+      ufw:
+        rule: allow
+        port: 22
+        proto: tcp
 
     - name: Start PostgreSQL service
       service:
@@ -52,21 +75,16 @@
               email varchar(255)
           );
           ALTER USER postgres WITH PASSWORD '123';
-
-    - name: Copy postgresql.conf
-      template:
-        src: ./postgresql.conf
-        dest: "/etc/postgresql/16/main/postgresql.conf"
-
-    - name: Copy pg_hba.conf
-      template:
-        src: ./pg_hba.conf
-        dest: "/etc/postgresql/16/main/pg_hba.conf"
+    - name: UMASK PostgreSQL logs
+      file:
+        path: /var/log/postgresql/postgresql-15-main.log
+        mode: '0777'
+        state: touch
 
 - name: db_repl
   hosts: host03
   become: yes
-  
+
   tasks:
     - name: Install PostgreSQL
       apt:
@@ -75,8 +93,20 @@
           - postgresql-contrib
           - python3
           - pip
+          - ufw
         state: latest
       become: true
+
+    - name: Copy postgresql.conf
+      template:
+        src: ./postgresql_repl.conf
+        dest: "/etc/postgresql/15/main/postgresql.conf"
+
+    - name: Allow PostgreSQL through UFW
+      ufw:
+        rule: allow
+        port: 5432
+        proto: tcp
 
     - name: Start PostgreSQL service
       service:
@@ -88,11 +118,6 @@
         name:
           - psycopg2-binary
         extra_args: --break-system-packages
-
-    - name: Copy postgresql.conf
-      template:
-        src: ./postgresql_repl.conf
-        dest: "/etc/postgresql/15/main/postgresql.conf"
 
     - name: Change postgres password
       shell: "echo 'postgres:123' | chpasswd"
@@ -115,8 +140,9 @@
         group: postgres
         mode: '0700'
 
-    - name: Backup PostgreSQL data
-      shell: "pg_basebackup -R -h {{ host03 }} -U repl_user -D /var/lib/postgresql/16/main -P"
+    - name: Create base backup
+      become_user: postgres
+      command: pg_basebackup -h 192.168.58.167 -U repl_user -D "/var/lib/postgresql/15/main" -P
       environment:
         PGPASSWORD: "123"
 
@@ -138,10 +164,20 @@
 
   tasks:
 
-  - name: Start SSH service
-    service:
-      name: ssh
-      state: started
+  - name: Install packages
+    apt:
+      name:
+        - python3.11-venv
+        - python3
+        - pip
+        - ufw
+      state: latest
+
+  - name: Allow PostgreSQL through UFW
+    ufw:
+      rule: allow
+      port: 5432
+      proto: tcp
 
   - name: Create Groups
     group:
@@ -168,16 +204,6 @@
       version: docker
       force: yes
 
-  - name: Install packages
-    apt:
-      name:
-        - python3.11-venv
-        - python3
-        - pip
-        - openssh-client
-        - openssh-server
-      state: latest
-
   - name: Install Python packages
     pip:
       requirements: /devops_bot/bot/requirements.txt
@@ -185,10 +211,10 @@
       virtualenv: /devops_bot/.venv
       virtualenv_command: /usr/bin/python3.11 -m venv
 
-  - name: Create .env file
+  - name: Copy .env file
     template:
       src: ./.env
-      dest: "/devops_bot/bot/.env"
+      dest: /devops_bot/bot/.env
 
   - name: bot launch
     shell: |
