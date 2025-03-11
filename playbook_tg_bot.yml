@@ -3,7 +3,7 @@
   become: yes
 
   tasks:
-    - name: Install PostgreSQL
+    - name: Install packages
       apt:
         name:
           - postgresql
@@ -12,6 +12,11 @@
           - pip
         state: latest
       become: true
+
+    - name: Start PostgreSQL service
+      service:
+        name: postgresql
+        state: started
 
     - name: Install Python packages
       pip:
@@ -48,11 +53,95 @@
           );
           ALTER USER postgres WITH PASSWORD '123';
 
+    - name: Copy postgresql.conf
+      template:
+        src: ./postgresql.conf
+        dest: "/etc/postgresql/16/main/postgresql.conf"
+
+    - name: Copy pg_hba.conf
+      template:
+        src: ./pg_hba.conf
+        dest: "/etc/postgresql/16/main/pg_hba.conf"
+
+- name: db_repl
+  hosts: host03
+  become: yes
+  
+  tasks:
+    - name: Install PostgreSQL
+      apt:
+        name:
+          - postgresql
+          - postgresql-contrib
+          - python3
+          - pip
+        state: latest
+      become: true
+
+    - name: Start PostgreSQL service
+      service:
+        name: postgresql
+        state: started
+
+    - name: Install Python packages
+      pip:
+        name:
+          - psycopg2-binary
+        extra_args: --break-system-packages
+
+    - name: Copy postgresql.conf
+      template:
+        src: ./postgresql_repl.conf
+        dest: "/etc/postgresql/15/main/postgresql.conf"
+
+    - name: Change postgres password
+      shell: "echo 'postgres:123' | chpasswd"
+
+    - name: Stop PostgreSQL service
+      service:
+        name: postgresql
+        state: stopped
+
+    - name: Remove existing PostgreSQL data directory
+      file:
+        path: /var/lib/postgresql/15/main
+        state: absent
+
+    - name: Create PostgreSQL data directory
+      file:
+        path: /var/lib/postgresql/15/main
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0700'
+
+    - name: Backup PostgreSQL data
+      shell: "pg_basebackup -R -h {{ host03 }} -U repl_user -D /var/lib/postgresql/16/main -P"
+      environment:
+        PGPASSWORD: "123"
+
+    - name: Change permissions on PostgreSQL data directory
+      file:
+        path: /var/lib/postgresql/15/main
+        state: directory
+        recurse: yes
+        mode: '0777'
+
+    - name: Start PostgreSQL service after backup
+      service:
+        name: postgresql
+        state: started
+
 - name: bot
   hosts: host01
   become: yes
 
   tasks:
+
+  - name: Start SSH service
+    service:
+      name: ssh
+      state: started
 
   - name: Create Groups
     group:
@@ -85,6 +174,8 @@
         - python3.11-venv
         - python3
         - pip
+        - openssh-client
+        - openssh-server
       state: latest
 
   - name: Install Python packages
