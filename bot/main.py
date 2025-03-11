@@ -500,7 +500,7 @@ def get_repl_logs(update: Update, context):
         logging.error("get_repl_logs exit 1") 
         client.close()
         return ConversationHandler.END
-    stdin, stdout, stderr = client.exec_command('cat /var/log/postgresql/postgresql-16-main.log | grep "repl_user"')
+    stdin, stdout, stderr = client.exec_command('cat /var/log/postgresql/postgresql-15-main.log | grep "repl_user"')
     data = str(stdout.read() + stderr.read()).replace('\\n', '\n').replace('\\t', '\t')[2:-1]
     client.close()
 
