@@ -1,0 +1,104 @@
+- name: db
+  hosts: host02
+  become: yes
+
+  tasks:
+    - name: Install PostgreSQL
+      apt:
+        name:
+          - postgresql
+          - postgresql-contrib
+          - python3
+          - pip
+        state: latest
+      become: true
+
+    - name: Install Python packages
+      pip:
+        name:
+          - psycopg2-binary
+        extra_args: --break-system-packages
+
+    - name: Create replication user 'repl_user'
+      become: true
+      become_user: postgres
+      postgresql_user:
+        name: repl_user
+        password: 123
+        role_attr_flags: REPLICATION
+
+    - name: Create database tg_bot
+      become_user: postgres
+      postgresql_db:
+        name: tg_bot
+        state: present
+
+    - name: Create tables phone_numbers and emails
+      become_user: postgres
+      postgresql_query:
+        db: tg_bot
+        query: |
+          CREATE TABLE IF NOT EXISTS phone_numbers(
+              id SERIAL PRIMARY KEY,
+              phone_number varchar(20)
+          );
+          CREATE TABLE IF NOT EXISTS emails(
+              id SERIAL PRIMARY KEY,
+              email varchar(255)
+          );
+          ALTER USER postgres WITH PASSWORD '123';
+
+- name: bot
+  hosts: host01
+  become: yes
+
+  tasks:
+
+  - name: Create Groups
+    group:
+      name: "{{item}}"
+      state: present
+    loop:
+      - dev
+      - test
+
+  - name: Create User
+    user:
+      name: "{{item.client_name}}"
+      shell: /bin/bash/
+      groups: test
+      append: yes
+      home: "/home/{{item.home_dir}}"
+    with_items:
+      - {client_name: test, home_dir: home_dir_test}
+
+  - name: Git Clone the repository
+    git:
+      repo: https://github.com/Rd1v1/devops_bot.git
+      dest: /devops_bot
+      version: docker
+      force: yes
+
+  - name: Install packages
+    apt:
+      name:
+        - python3.11-venv
+        - python3
+        - pip
+      state: latest
+
+  - name: Install Python packages
+    pip:
+      requirements: /devops_bot/bot/requirements.txt
+      extra_args: --break-system-packages
+      virtualenv: /devops_bot/.venv
+      virtualenv_command: /usr/bin/python3.11 -m venv
+
+  - name: Create .env file
+    template:
+      src: ./.env
+      dest: "/devops_bot/bot/.env"
+
+  - name: bot launch
+    shell: |
+        python3 /devops_bot/bot/main.py
