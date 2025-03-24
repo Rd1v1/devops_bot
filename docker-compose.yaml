@@ -3,7 +3,9 @@ version: "3.9"
 services:
   bot:
     container_name: bot
-    build: bot/Dockerfile
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     depends_on:
@@ -15,7 +17,9 @@ services:
 
   db:
     container_name: db
-    build: db/Dockerfile
+    build:
+      context: ./db
+      dockerfile: Dockerfile
     volumes:
       - db_data:/var/lib/postgresql/data
     environment:
@@ -29,7 +33,9 @@ services:
 
   db_repl:
     container_name: db_repl
-    build: db_repl/Dockerfile
+    build:
+      context: ./db_repl
+      dockerfile: Dockerfile
     ports:
       - "5433:5432"
     depends_on:
